@@ -80,9 +80,10 @@ main() {
     echo "Installation complete!"
     echo
     echo "The updater will now run automatically:"
-    echo "  • Every 6 hours (configurable in plist)"
+    echo "  • Daily at 3:00 AM (when system date changes)"
     echo "  • Only when network is available"
     echo "  • Silently in the background"
+    echo "  • Only once per day (tracks last run date)"
     echo
     echo "Manual commands:"
     echo "  Test run (check only):     $ENGINE_SCRIPT"

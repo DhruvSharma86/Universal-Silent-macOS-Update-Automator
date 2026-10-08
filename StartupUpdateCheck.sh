@@ -13,6 +13,8 @@ readonly LOCK_DIR="/tmp/com.codex.backgroundupdatecheck.lock"
 readonly LOCK_FD=200
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly STATE_DIR="${HOME}/.local/state/codex-background-update"
+readonly LAST_RUN_FILE="${STATE_DIR}/last-run-date"
 
 # Timeouts (seconds)
 readonly TIMEOUT_MACOS_UPDATE=1800     # 30 min
@@ -132,6 +134,26 @@ run_with_timeout() {
         perl -e "alarm $timeout_seconds; exec @ARGV" "${cmd[@]}"
         return $?
     fi
+}
+
+# Check if already run today (prevents multiple runs per day)
+check_daily_run() {
+    mkdir -p "$STATE_DIR"
+    local today
+    today=$(date '+%Y-%m-%d')
+    
+    if [[ -f "$LAST_RUN_FILE" ]]; then
+        local last_run
+        last_run=$(cat "$LAST_RUN_FILE" 2>/dev/null || echo "")
+        if [[ "$last_run" == "$today" ]]; then
+            log "Already ran today ($today), skipping"
+            return 1
+        fi
+    fi
+    
+    # Record today's run
+    echo "$today" > "$LAST_RUN_FILE"
+    return 0
 }
 
 # Process detection
@@ -502,6 +524,11 @@ main() {
     parse_args "$@"
 
     log "Starting $SCRIPT_NAME (require_network=$REQUIRE_NETWORK, install=$INSTALL_UPDATES, dry_run=$DRY_RUN)"
+
+    # Check daily run (skip if already ran today)
+    if ! check_daily_run; then
+        exit 0
+    fi
 
     # Acquire lock
     if ! acquire_lock; then
